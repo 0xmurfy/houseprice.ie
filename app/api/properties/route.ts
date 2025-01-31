@@ -108,29 +108,78 @@ function buildWhereClause(params: QueryParams): { whereClause: string; values: a
   return { whereClause, values };
 }
 
+function getPoolConfig() {
+  // If DATABASE_URL is provided (common in production), use it
+  if (process.env.DATABASE_URL) {
+    return {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production" ? {
+        rejectUnauthorized: false
+      } : false
+    };
+  }
+
+  // Otherwise, use individual config variables
+  return {
+    host: process.env.POSTGRES_HOST,
+    port: 5432,
+    user: process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD,
+    database: process.env.POSTGRES_DATABASE,
+    ssl: process.env.NODE_ENV === "production" ? {
+      rejectUnauthorized: false
+    } : false
+  };
+}
+
 export async function GET(request: NextRequest) {
   let pool: Pool | null = null;
   
   try {
+    // Log environment variables (excluding sensitive data)
+    console.log('Environment:', {
+      NODE_ENV: process.env.NODE_ENV,
+      DATABASE_URL: process.env.DATABASE_URL ? 'Set' : 'Not set',
+      POSTGRES_HOST: process.env.POSTGRES_HOST || 'Not set',
+      hasUser: !!process.env.POSTGRES_USER,
+      hasPassword: !!process.env.POSTGRES_PASSWORD,
+      hasDatabase: !!process.env.POSTGRES_DATABASE
+    });
+
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
     const params = validateAndParseQueryParams(searchParams);
     const offset = (params.page - 1) * params.limit;
 
-    // Create database pool
-    pool = new Pool({
-      host: process.env.POSTGRES_HOST,
-      port: 5432,
-      user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      database: process.env.POSTGRES_DATABASE,
-      ssl: process.env.NODE_ENV === "production" ? {
-        rejectUnauthorized: false
-      } : false
+    console.log('Attempting database connection...');
+
+    // Get database configuration
+    const poolConfig = getPoolConfig();
+
+    // Log non-sensitive config
+    console.log('Pool config (excluding sensitive data):', {
+      host: poolConfig.connectionString ? 'Using connection string' : poolConfig.host,
+      port: poolConfig.connectionString ? 'Using connection string' : poolConfig.port,
+      database: poolConfig.connectionString ? 'Using connection string' : poolConfig.database,
+      ssl: poolConfig.ssl
     });
+
+    if (!process.env.DATABASE_URL && !process.env.POSTGRES_HOST) {
+      throw new Error('Database configuration is missing. Please set either DATABASE_URL or individual database environment variables.');
+    }
+
+    pool = new Pool(poolConfig);
+
+    // Test the connection
+    console.log('Testing database connection...');
+    await pool.query('SELECT NOW()');
+    console.log('Database connection successful');
 
     // Build where clause and get values for parameterized query
     const { whereClause, values } = buildWhereClause(params);
+    
+    // Log the queries being executed (without values for security)
+    console.log('Executing count query:', `SELECT COUNT(*) FROM property_sale ${whereClause}`);
     
     // Get total count with filters
     const countQuery = `
@@ -140,6 +189,10 @@ export async function GET(request: NextRequest) {
     `;
     const countResult = await pool.query(countQuery, values);
     const total = parseInt(countResult.rows[0].count);
+    console.log('Total count:', total);
+
+    // Log the main query
+    console.log('Executing properties query:', `SELECT * FROM property_sale ${whereClause} ORDER BY ${params.sortBy} ${params.sortDirection} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`);
 
     // Get filtered and sorted properties
     const propertiesQuery = `
@@ -153,6 +206,8 @@ export async function GET(request: NextRequest) {
       propertiesQuery, 
       [...values, params.limit, offset]
     );
+
+    console.log(`Found ${propertiesResult.rows.length} properties`);
 
     return NextResponse.json({
       properties: propertiesResult.rows,
@@ -175,8 +230,15 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error in GET /api/properties:', error);
     
-    // Determine appropriate error response
+    // Enhanced error logging
     if (error instanceof Error) {
+      console.error('Detailed error information:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: error.cause
+      });
+
       if (error.message.includes('Invalid')) {
         return NextResponse.json({ 
           error: 'Validation Error', 
@@ -184,11 +246,13 @@ export async function GET(request: NextRequest) {
         }, { status: 400 });
       }
       
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
-      });
+      // Check for specific database errors
+      if (error.message.includes('connect')) {
+        return NextResponse.json({ 
+          error: 'Database Connection Error', 
+          details: 'Failed to connect to database. Please check database configuration.'
+        }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ 
@@ -199,7 +263,12 @@ export async function GET(request: NextRequest) {
   } finally {
     // Ensure pool is always closed
     if (pool) {
-      await pool.end();
+      try {
+        await pool.end();
+        console.log('Database pool closed successfully');
+      } catch (closeError) {
+        console.error('Error closing database pool:', closeError);
+      }
     }
   }
 } 
