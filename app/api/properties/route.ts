@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
-// Trigger new deployment with updated environment variables
+// Trigger new deployment with updated Supabase host configuration
 // Define valid sort fields and directions
 const VALID_SORT_FIELDS = ['id', 'price', 'saledate', 'year'] as const;
 const VALID_SORT_DIRECTIONS = ['asc', 'desc'] as const;
