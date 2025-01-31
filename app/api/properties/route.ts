@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
-// Add export config to make route dynamic
+// Force the route to be dynamic and disable static generation
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
@@ -16,8 +17,25 @@ export async function GET(request: NextRequest) {
       database: process.env.POSTGRES_DATABASE,
       ssl: process.env.NODE_ENV === "production" ? {
         rejectUnauthorized: false
-      } : false
+      } : false,
+      connectionTimeoutMillis: 5000, // 5 second timeout
+      query_timeout: 10000, // 10 second timeout
+      statement_timeout: 10000, // 10 second timeout
+      idle_in_transaction_session_timeout: 10000 // 10 second timeout
     });
+
+    // Test the connection immediately
+    try {
+      const client = await pool.connect();
+      console.log('Successfully connected to database');
+      client.release();
+    } catch (connectionError) {
+      console.error('Failed to connect to database:', connectionError);
+      return NextResponse.json({ 
+        error: 'Database Connection Error',
+        details: connectionError instanceof Error ? connectionError.message : 'Failed to connect to database'
+      }, { status: 500 });
+    }
 
     try {
       // First, let's check the table structure
