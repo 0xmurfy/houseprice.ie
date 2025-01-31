@@ -114,9 +114,10 @@ function getPoolConfig() {
   if (process.env.DATABASE_URL) {
     return {
       connectionString: process.env.DATABASE_URL,
-      ssl: process.env.NODE_ENV === "production" ? {
-        rejectUnauthorized: false
-      } : false
+      ssl: {
+        rejectUnauthorized: false,
+        sslmode: 'require'
+      }
     };
   }
 
@@ -127,9 +128,10 @@ function getPoolConfig() {
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DATABASE,
-    ssl: process.env.NODE_ENV === "production" ? {
-      rejectUnauthorized: false
-    } : false
+    ssl: {
+      rejectUnauthorized: false,
+      sslmode: 'require'
+    }
   };
 }
 
@@ -160,9 +162,7 @@ export async function GET(request: NextRequest) {
     // Log non-sensitive config
     console.log('Pool config (excluding sensitive data):', {
       host: poolConfig.connectionString ? 'Using connection string' : poolConfig.host,
-      port: poolConfig.connectionString ? 'Using connection string' : poolConfig.port,
-      database: poolConfig.connectionString ? 'Using connection string' : poolConfig.database,
-      ssl: poolConfig.ssl
+      ssl: poolConfig.ssl ? 'Enabled with sslmode=require' : 'Disabled'
     });
 
     if (!process.env.DATABASE_URL && !process.env.POSTGRES_HOST) {
@@ -171,9 +171,13 @@ export async function GET(request: NextRequest) {
 
     pool = new Pool(poolConfig);
 
-    // Test the connection
+    // Test the connection with a timeout
     console.log('Testing database connection...');
-    await pool.query('SELECT NOW()');
+    const connectionTestPromise = pool.query('SELECT NOW()');
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+    );
+    await Promise.race([connectionTestPromise, timeoutPromise]);
     console.log('Database connection successful');
 
     // Build where clause and get values for parameterized query
