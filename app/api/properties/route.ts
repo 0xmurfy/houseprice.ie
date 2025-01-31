@@ -1,5 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { Pool, PoolClient, QueryConfig } from 'pg';
+
+// Create a singleton pool instance
+let pool: Pool | null = null;
+
+function getPool() {
+  if (pool) return pool;
+
+  const config = getPoolConfig();
+  pool = new Pool(config);
+
+  // Handle pool errors
+  pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+    pool = null;
+  });
+
+  return pool;
+}
 
 // Trigger new deployment with updated Supabase host configuration
 // Define valid sort fields and directions
@@ -117,10 +135,12 @@ function getPoolConfig() {
       ssl: {
         rejectUnauthorized: false
       },
-      connectionTimeoutMillis: 10000, // 10 seconds
-      query_timeout: 10000, // 10 seconds
-      statement_timeout: 10000, // 10 seconds
-      idle_in_transaction_session_timeout: 10000 // 10 seconds
+      connectionTimeoutMillis: 30000, // 30 seconds
+      query_timeout: 30000, // 30 seconds
+      statement_timeout: 30000, // 30 seconds
+      idle_in_transaction_session_timeout: 30000, // 30 seconds
+      max: 20, // Maximum number of clients in the pool
+      idleTimeoutMillis: 30000 // How long a client is allowed to remain idle before being closed
     };
   }
 
@@ -134,21 +154,29 @@ function getPoolConfig() {
     ssl: {
       rejectUnauthorized: false
     },
-    connectionTimeoutMillis: 10000, // 10 seconds
-    query_timeout: 10000, // 10 seconds
-    statement_timeout: 10000, // 10 seconds
-    idle_in_transaction_session_timeout: 10000 // 10 seconds
+    connectionTimeoutMillis: 30000, // 30 seconds
+    query_timeout: 30000, // 30 seconds
+    statement_timeout: 30000, // 30 seconds
+    idle_in_transaction_session_timeout: 30000, // 30 seconds
+    max: 20, // Maximum number of clients in the pool
+    idleTimeoutMillis: 30000 // How long a client is allowed to remain idle before being closed
   };
 }
 
 export async function GET(request: NextRequest) {
-  let pool: Pool | null = null;
+  let client: PoolClient | null = null;
   
   try {
     // Set response timeout
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => {
+      abortController.abort();
+    }, 25000); // 25 second timeout
+
     request.signal.addEventListener('abort', () => {
-      if (pool) {
-        pool.end().catch(console.error);
+      clearTimeout(timeoutId);
+      if (client) {
+        client.release();
       }
     });
 
@@ -162,79 +190,81 @@ export async function GET(request: NextRequest) {
       hasDatabase: !!process.env.POSTGRES_DATABASE
     });
 
+    if (!process.env.DATABASE_URL && !process.env.POSTGRES_HOST) {
+      return NextResponse.json({ 
+        error: 'Configuration Error',
+        details: 'Database configuration is missing'
+      }, { status: 500 });
+    }
+
+    // Get or create pool
+    const pool = getPool();
+
+    // Test the connection with a timeout
+    console.log('Testing database connection...');
+    try {
+      const clientPromise = pool.connect();
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Connection timeout after 10 seconds')), 10000)
+      );
+      
+      client = await Promise.race([clientPromise, timeoutPromise]);
+      console.log('Successfully acquired client from pool');
+      
+      const testQuery: QueryConfig = {
+        text: 'SELECT NOW()',
+        values: [],
+        name: 'connection-test'
+      };
+      
+      const testResult = await client.query<[Date]>(testQuery);
+      console.log('Database connection test successful:', testResult.rows[0]);
+    } catch (connError) {
+      console.error('Database connection test failed:', connError);
+      return NextResponse.json({ 
+        error: 'Database Connection Error',
+        details: 'Could not establish database connection',
+        technical_details: connError instanceof Error ? connError.message : 'Unknown error'
+      }, { status: 503 });
+    }
+
     // Parse and validate query parameters
     const searchParams = request.nextUrl.searchParams;
     const params = validateAndParseQueryParams(searchParams);
     const offset = (params.page - 1) * params.limit;
 
-    console.log('Attempting database connection...');
-
-    // Get database configuration
-    const poolConfig = getPoolConfig();
-
-    // Log non-sensitive config
-    console.log('Pool config (excluding sensitive data):', {
-      host: poolConfig.connectionString ? 'Using connection string' : poolConfig.host,
-      ssl: poolConfig.ssl ? 'Enabled' : 'Disabled',
-      timeouts: {
-        connection: poolConfig.connectionTimeoutMillis,
-        query: poolConfig.query_timeout,
-        statement: poolConfig.statement_timeout
-      }
-    });
-
-    if (!process.env.DATABASE_URL && !process.env.POSTGRES_HOST) {
-      throw new Error('Database configuration is missing. Please set either DATABASE_URL or individual database environment variables.');
-    }
-
-    pool = new Pool(poolConfig);
-
-    // Test the connection with a timeout
-    console.log('Testing database connection...');
-    try {
-      const connectionTestPromise = pool.query('SELECT NOW()');
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
-      );
-      await Promise.race([connectionTestPromise, timeoutPromise]);
-      console.log('Database connection successful');
-    } catch (connError) {
-      throw new Error(`Database connection failed: ${connError instanceof Error ? connError.message : 'Unknown error'}`);
-    }
-
     // Build where clause and get values for parameterized query
     const { whereClause, values } = buildWhereClause(params);
     
-    // Log the queries being executed (without values for security)
-    console.log('Executing count query:', `SELECT COUNT(*) FROM property_sale ${whereClause}`);
-    
     // Get total count with filters
-    const countQuery = `
-      SELECT COUNT(*) 
-      FROM property_sale 
-      ${whereClause}
-    `;
-    const countResult = await pool.query(countQuery, values);
+    const countQuery: QueryConfig = {
+      text: `SELECT COUNT(*) FROM property_sale ${whereClause}`,
+      values,
+      name: 'count-query'
+    };
+    console.log('Executing count query:', countQuery.text);
+    
+    const countResult = await client.query<{ count: string }>(countQuery);
     const total = parseInt(countResult.rows[0].count);
     console.log('Total count:', total);
 
-    // Log the main query
-    console.log('Executing properties query:', `SELECT * FROM property_sale ${whereClause} ORDER BY ${params.sortBy} ${params.sortDirection} LIMIT $${values.length + 1} OFFSET $${values.length + 2}`);
-
     // Get filtered and sorted properties
-    const propertiesQuery = `
-      SELECT *
-      FROM property_sale 
-      ${whereClause}
-      ORDER BY ${params.sortBy} ${params.sortDirection}
-      LIMIT $${values.length + 1} OFFSET $${values.length + 2}
-    `;
-    const propertiesResult = await pool.query(
-      propertiesQuery, 
-      [...values, params.limit, offset]
-    );
+    const propertiesQuery: QueryConfig = {
+      text: `
+        SELECT *
+        FROM property_sale 
+        ${whereClause}
+        ORDER BY ${params.sortBy} ${params.sortDirection}
+        LIMIT $${values.length + 1} OFFSET $${values.length + 2}
+      `,
+      values: [...values, params.limit, offset],
+      name: 'properties-query'
+    };
+    console.log('Executing properties query:', propertiesQuery.text);
 
+    const propertiesResult = await client.query(propertiesQuery);
     console.log(`Found ${propertiesResult.rows.length} properties`);
+    clearTimeout(timeoutId);
 
     return NextResponse.json({
       properties: propertiesResult.rows,
@@ -255,53 +285,52 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error in GET /api/properties:', error);
+    console.error('Detailed error in GET /api/properties:', error);
     
-    // Enhanced error logging
     if (error instanceof Error) {
-      console.error('Detailed error information:', {
+      console.error('Error details:', {
         name: error.name,
         message: error.message,
         stack: error.stack,
         cause: error.cause
       });
 
-      if (error.message.includes('timeout')) {
+      // Handle specific error types
+      if (error.message.includes('timeout') || error.name === 'AbortError') {
         return NextResponse.json({ 
-          error: 'Database Timeout', 
-          details: 'The database request timed out. Please try again.'
+          error: 'Request Timeout',
+          details: 'The request took too long to process. Please try again.',
+          technical_details: error.message
         }, { status: 504 });
       }
 
       if (error.message.includes('Invalid')) {
         return NextResponse.json({ 
-          error: 'Validation Error', 
-          details: error.message 
+          error: 'Validation Error',
+          details: error.message
         }, { status: 400 });
       }
       
       if (error.message.includes('connect') || error.message.includes('database')) {
         return NextResponse.json({ 
-          error: 'Database Connection Error', 
-          details: 'Failed to connect to database. Please try again later.'
+          error: 'Database Error',
+          details: 'Database connection failed. Please try again later.',
+          technical_details: error.message
         }, { status: 503 });
       }
     }
 
+    // Generic error response
     return NextResponse.json({ 
       error: 'Internal Server Error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'An unexpected error occurred'
     }, { status: 500 });
 
   } finally {
-    // Ensure pool is always closed
-    if (pool) {
-      try {
-        await pool.end();
-        console.log('Database pool closed successfully');
-      } catch (closeError) {
-        console.error('Error closing database pool:', closeError);
-      }
+    // Release the client back to the pool
+    if (client) {
+      client.release();
+      console.log('Client released back to pool');
     }
   }
 } 
