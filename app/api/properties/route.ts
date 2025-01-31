@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+// Add export config to make route dynamic
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: NextRequest) {
   try {
     console.log('Creating database pool...');
