@@ -115,22 +115,20 @@ function getPoolConfig() {
     return {
       connectionString: process.env.DATABASE_URL,
       ssl: {
-        rejectUnauthorized: false,
-        sslmode: 'require'
+        rejectUnauthorized: false
       }
     };
   }
 
   // Otherwise, use individual config variables
   return {
-    host: process.env.POSTGRES_HOST,
+    host: process.env.POSTGRES_HOST?.replace('db.', ''), // Remove 'db.' prefix if present
     port: 5432,
     user: process.env.POSTGRES_USER,
     password: process.env.POSTGRES_PASSWORD,
     database: process.env.POSTGRES_DATABASE,
     ssl: {
-      rejectUnauthorized: false,
-      sslmode: 'require'
+      rejectUnauthorized: false
     }
   };
 }
