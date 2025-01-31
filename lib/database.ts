@@ -7,25 +7,40 @@ let dataSource: DataSource;
 
 export const getDataSource = async () => {
   if (!initialized) {
-    dataSource = new DataSource({
-      type: "postgres",
-      host: process.env.POSTGRES_HOST || "localhost",
-      port: parseInt(process.env.POSTGRES_PORT || "5432"),
-      username: process.env.POSTGRES_USER || "postgres",
-      password: process.env.POSTGRES_PASSWORD || "postgres",
-      database: process.env.POSTGRES_DATABASE || "property_sales",
-      synchronize: true,
-      logging: process.env.NODE_ENV === "development",
-      entities: [PropertySale],
-      subscribers: [],
-      migrations: [],
-      ssl: process.env.NODE_ENV === "production" ? {
-        rejectUnauthorized: false
-      } : false
+    const isProduction = process.env.NODE_ENV === "production";
+    console.log('Database config:', {
+      host: process.env.POSTGRES_HOST,
+      port: 5432,
+      username: process.env.POSTGRES_USER,
+      database: process.env.POSTGRES_DATABASE,
+      ssl: isProduction
     });
+    
+    try {
+      dataSource = new DataSource({
+        type: "postgres",
+        host: process.env.POSTGRES_HOST,
+        port: 5432,
+        username: process.env.POSTGRES_USER,
+        password: process.env.POSTGRES_PASSWORD,
+        database: process.env.POSTGRES_DATABASE,
+        synchronize: true,
+        logging: true,
+        entities: [PropertySale],
+        subscribers: [],
+        migrations: [],
+        ssl: isProduction ? {
+          rejectUnauthorized: false
+        } : false,
+      });
 
-    await dataSource.initialize();
-    initialized = true;
+      await dataSource.initialize();
+      console.log("✅ Database connected successfully");
+      initialized = true;
+    } catch (error) {
+      console.error("❌ Database connection error:", error);
+      throw error;
+    }
   }
 
   return dataSource;

@@ -52,9 +52,9 @@ export default function Home() {
         searchParams.set('search', debouncedSearch);
       }
 
-      console.log('Fetching properties with params:', searchParams.toString());
+      console.log('Starting properties fetch...');
       const response = await fetch(`/api/properties?${searchParams.toString()}`);
-      console.log('Response status:', response.status);
+      console.log('Response received:', response.status, response.statusText);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -63,22 +63,27 @@ export default function Home() {
       }
       
       const data = await response.json();
-      console.log('API Response:', data);
+      console.log('Parsed response data:', {
+        propertiesCount: data.properties?.length || 0,
+        total: data.total,
+        firstProperty: data.properties?.[0]
+      });
       
-      if (!Array.isArray(data.properties)) {
-        console.error('Invalid properties data:', data);
+      if (!data.properties || !Array.isArray(data.properties)) {
+        console.error('Invalid properties data structure:', data);
         throw new Error('Invalid response format');
       }
 
       setProperties(data.properties);
       setPaginationInfo({
-        total: data.total,
-        pages: Math.ceil(data.total / 50),
+        total: data.total || 0,
+        pages: Math.ceil((data.total || 0) / 50),
         currentPage: currentPage,
         perPage: 50
       });
     } catch (error) {
-      console.error('Error fetching properties:', error);
+      console.error('Error in fetchProperties:', error);
+      setProperties([]);  // Reset properties on error
     } finally {
       setLoading(false);
     }
@@ -167,6 +172,10 @@ export default function Home() {
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          </div>
+        ) : properties.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-lg text-gray-600">No properties found</p>
           </div>
         ) : (
           <>

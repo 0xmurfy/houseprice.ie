@@ -1,6 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, Index, CreateDateColumn, UpdateDateColumn } from "typeorm";
 
-@Entity()
+@Entity('property_sale')
+@Index(["year", "saleDate"])
+@Index(["fullAddress"])
 export class PropertySale {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -17,7 +19,7 @@ export class PropertySale {
   @Index()
   eircode!: string | null;
 
-  @Column({ type: "float8" })
+  @Column({ type: "float8", precision: 10, scale: 2 })
   @Index()
   price!: number;
 
@@ -26,12 +28,15 @@ export class PropertySale {
   year!: number;
 
   @Column({ type: "varchar", default: "" })
+  @Index()
   fullAddress!: string;
 
   @Column({ type: "varchar", nullable: true })
+  @Index()
   county!: string | null;
 
   @Column({ type: "varchar", default: "Second-Hand Dwelling house /Apartment" })
+  @Index()
   description!: string;
 
   @CreateDateColumn({ type: "timestamp" })
