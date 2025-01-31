@@ -116,7 +116,11 @@ function getPoolConfig() {
       connectionString: process.env.DATABASE_URL,
       ssl: {
         rejectUnauthorized: false
-      }
+      },
+      connectionTimeoutMillis: 10000, // 10 seconds
+      query_timeout: 10000, // 10 seconds
+      statement_timeout: 10000, // 10 seconds
+      idle_in_transaction_session_timeout: 10000 // 10 seconds
     };
   }
 
@@ -129,7 +133,11 @@ function getPoolConfig() {
     database: process.env.POSTGRES_DATABASE,
     ssl: {
       rejectUnauthorized: false
-    }
+    },
+    connectionTimeoutMillis: 10000, // 10 seconds
+    query_timeout: 10000, // 10 seconds
+    statement_timeout: 10000, // 10 seconds
+    idle_in_transaction_session_timeout: 10000 // 10 seconds
   };
 }
 
@@ -137,6 +145,13 @@ export async function GET(request: NextRequest) {
   let pool: Pool | null = null;
   
   try {
+    // Set response timeout
+    request.signal.addEventListener('abort', () => {
+      if (pool) {
+        pool.end().catch(console.error);
+      }
+    });
+
     // Log environment variables (excluding sensitive data)
     console.log('Environment:', {
       NODE_ENV: process.env.NODE_ENV,
@@ -160,7 +175,12 @@ export async function GET(request: NextRequest) {
     // Log non-sensitive config
     console.log('Pool config (excluding sensitive data):', {
       host: poolConfig.connectionString ? 'Using connection string' : poolConfig.host,
-      ssl: poolConfig.ssl ? 'Enabled with sslmode=require' : 'Disabled'
+      ssl: poolConfig.ssl ? 'Enabled' : 'Disabled',
+      timeouts: {
+        connection: poolConfig.connectionTimeoutMillis,
+        query: poolConfig.query_timeout,
+        statement: poolConfig.statement_timeout
+      }
     });
 
     if (!process.env.DATABASE_URL && !process.env.POSTGRES_HOST) {
@@ -171,12 +191,16 @@ export async function GET(request: NextRequest) {
 
     // Test the connection with a timeout
     console.log('Testing database connection...');
-    const connectionTestPromise = pool.query('SELECT NOW()');
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database connection timeout')), 5000)
-    );
-    await Promise.race([connectionTestPromise, timeoutPromise]);
-    console.log('Database connection successful');
+    try {
+      const connectionTestPromise = pool.query('SELECT NOW()');
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database connection timeout after 10 seconds')), 10000)
+      );
+      await Promise.race([connectionTestPromise, timeoutPromise]);
+      console.log('Database connection successful');
+    } catch (connError) {
+      throw new Error(`Database connection failed: ${connError instanceof Error ? connError.message : 'Unknown error'}`);
+    }
 
     // Build where clause and get values for parameterized query
     const { whereClause, values } = buildWhereClause(params);
@@ -242,6 +266,13 @@ export async function GET(request: NextRequest) {
         cause: error.cause
       });
 
+      if (error.message.includes('timeout')) {
+        return NextResponse.json({ 
+          error: 'Database Timeout', 
+          details: 'The database request timed out. Please try again.'
+        }, { status: 504 });
+      }
+
       if (error.message.includes('Invalid')) {
         return NextResponse.json({ 
           error: 'Validation Error', 
@@ -249,12 +280,11 @@ export async function GET(request: NextRequest) {
         }, { status: 400 });
       }
       
-      // Check for specific database errors
-      if (error.message.includes('connect')) {
+      if (error.message.includes('connect') || error.message.includes('database')) {
         return NextResponse.json({ 
           error: 'Database Connection Error', 
-          details: 'Failed to connect to database. Please check database configuration.'
-        }, { status: 500 });
+          details: 'Failed to connect to database. Please try again later.'
+        }, { status: 503 });
       }
     }
 
