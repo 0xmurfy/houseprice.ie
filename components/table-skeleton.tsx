@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export function TableSkeleton() {
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border min-h-[calc(50*53px+41px)]">
       <Table>
         <TableHeader>
           <TableRow>
@@ -16,7 +16,7 @@ export function TableSkeleton() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {Array.from({ length: 10 }).map((_, index) => (
+          {Array.from({ length: 50 }).map((_, index) => (
             <TableRow key={index}>
               <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
               <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>

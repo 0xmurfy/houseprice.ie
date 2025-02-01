@@ -150,6 +150,12 @@ export default function Home() {
     setCurrentPage(1);
   };
 
+  // Function to pad the properties array to always have 50 items
+  const padProperties = (props: Property[]): (Property | null)[] => {
+    if (props.length >= 50) return props;
+    return [...props, ...Array(50 - props.length).fill(null)];
+  };
+
   return (
     <main className="min-h-screen bg-background">
       <div className="absolute inset-0 -z-10 overflow-hidden">
@@ -173,12 +179,12 @@ export default function Home() {
         {loading ? (
           <TableSkeleton />
         ) : properties.length === 0 ? (
-          <div className="text-center py-10">
+          <div className="min-h-[calc(50*53px+41px)] rounded-md border flex items-center justify-center">
             <p className="text-lg text-gray-600">No properties found</p>
           </div>
         ) : (
           <>
-            <div className="rounded-md border">
+            <div className="rounded-md border min-h-[calc(50*53px+41px)]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -191,28 +197,41 @@ export default function Home() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {properties.map((property) => (
-                    <TableRow key={property.id}>
-                      <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
-                      <TableCell>{formatDate(property.saleDate)}</TableCell>
-                      <TableCell>{property.county || '-'}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          className={
-                            formatCondition(property.description) === 'New'
-                              ? 'bg-white text-black border border-black/5'
-                              : 'bg-black/5 text-black border-0'
-                          }
-                        >
-                          {formatCondition(property.description)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {property.eircode || '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatPrice(property.price, property.description)}
-                      </TableCell>
+                  {padProperties(properties).map((property, index) => (
+                    <TableRow key={property?.id || `empty-${index}`}>
+                      {property ? (
+                        <>
+                          <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
+                          <TableCell>{formatDate(property.saleDate)}</TableCell>
+                          <TableCell>{property.county || '-'}</TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={
+                                formatCondition(property.description) === 'New'
+                                  ? 'bg-white text-black border border-black/5'
+                                  : 'bg-black/5 text-black border-0'
+                              }
+                            >
+                              {formatCondition(property.description)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {property.eircode || '-'}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {formatPrice(property.price, property.description)}
+                          </TableCell>
+                        </>
+                      ) : (
+                        <>
+                          <TableCell className="text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-right text-muted-foreground/30">-</TableCell>
+                        </>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
