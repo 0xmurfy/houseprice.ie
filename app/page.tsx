@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Hero } from "@/components/hero";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useDebounce } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
 
 interface Property {
   id: number;
@@ -203,12 +204,13 @@ export default function Home() {
                           <TableCell>{property.county || '-'}</TableCell>
                           <TableCell>
                             <Badge 
-                              variant="secondary"
-                              className={
+                              variant={formatCondition(property.description) === 'New' ? 'default' : 'secondary'}
+                              className={cn(
+                                "font-medium",
                                 formatCondition(property.description) === 'New'
-                                  ? 'bg-primary/10 text-primary hover:bg-primary/20'
-                                  : undefined
-                              }
+                                  ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25'
+                                  : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-800/80'
+                              )}
                             >
                               {formatCondition(property.description)}
                             </Badge>
