@@ -6,6 +6,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { GridPattern } from "@/components/ui/grid-pattern";
+import { TableSkeleton } from "@/components/table-skeleton";
 import { useDebounce } from "@/lib/hooks";
 
 interface Property {
@@ -170,9 +171,7 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-          </div>
+          <TableSkeleton />
         ) : properties.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-lg text-gray-600">No properties found</p>
