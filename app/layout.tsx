@@ -18,15 +18,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen font-sans antialiased">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
+        <ThemeProvider>
           <div className="relative flex min-h-screen flex-col">
             <SiteHeader />
-            {children}
+            <div className="flex-1">{children}</div>
           </div>
         </ThemeProvider>
       </body>
