@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
-import { ThemeProvider } from "@/components/providers"
+import { ThemeProvider } from "@/components/theme-provider"
 import { SiteHeader } from "@/components/site-header"
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Check The Price",
-  description: "Search property sales in Dublin",
+  title: "Check The Price - Irish Property Price Register",
+  description: "Search through the latest property sales data in Ireland. Find out what properties sold for in your area.",
 };
 
 export default function RootLayout({
@@ -16,11 +16,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="min-h-screen font-sans antialiased">
         <ThemeProvider
           attribute="class"
-          defaultTheme="dark"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >

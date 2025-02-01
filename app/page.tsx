@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { GridPattern } from "@/components/ui/grid-pattern";
+import { Hero } from "@/components/hero";
 import { TableSkeleton } from "@/components/table-skeleton";
 import { useDebounce } from "@/lib/hooks";
 
@@ -158,13 +158,10 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <GridPattern />
-      </div>
-
+      <Hero />
       <div className="container mx-auto py-10 space-y-4">
         <div className="flex justify-between items-center">
-          <h1 className="text-4xl font-bold">Property Sales</h1>
+          <h2 className="text-2xl font-semibold">Latest Sales</h2>
           <div className="w-1/3">
             <Input
               type="search"
@@ -180,7 +177,7 @@ export default function Home() {
           <TableSkeleton />
         ) : properties.length === 0 ? (
           <div className="h-[2650px] rounded-md border flex items-center justify-center">
-            <p className="text-lg text-gray-600">No properties found</p>
+            <p className="text-lg text-muted-foreground">No properties found</p>
           </div>
         ) : (
           <>
@@ -206,10 +203,11 @@ export default function Home() {
                           <TableCell>{property.county || '-'}</TableCell>
                           <TableCell>
                             <Badge 
+                              variant="secondary"
                               className={
                                 formatCondition(property.description) === 'New'
-                                  ? 'bg-white text-black border border-black/5'
-                                  : 'bg-black/5 text-black border-0'
+                                  ? 'bg-primary/10 text-primary hover:bg-primary/20'
+                                  : undefined
                               }
                             >
                               {formatCondition(property.description)}
