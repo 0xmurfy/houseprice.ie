@@ -19,7 +19,7 @@ export class PropertySale {
   @Index()
   eircode!: string | null;
 
-  @Column({ type: "float8", precision: 10, scale: 2 })
+  @Column({ type: "float8" })
   @Index()
   price!: number;
 

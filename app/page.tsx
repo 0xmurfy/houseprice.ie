@@ -182,9 +182,9 @@ export default function Home() {
         <Hero />
       </div>
       <div className="container mx-auto py-10 space-y-4 table-section">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-0">
           <h2 className="text-2xl font-semibold">Latest Sales</h2>
-          <div className="w-1/3">
+          <div className="w-full md:w-1/3">
             <Input
               type="search"
               placeholder="Search by address, eircode, or county..."
@@ -205,7 +205,7 @@ export default function Home() {
           <>
             <div className="rounded-md border table-container">
               <Table>
-                <TableHeader>
+                <TableHeader className="hidden md:table-header-group">
                   <TableRow>
                     <TableHead>Address</TableHead>
                     <TableHead>Date</TableHead>
@@ -217,17 +217,55 @@ export default function Home() {
                 </TableHeader>
                 <TableBody>
                   {padProperties(properties).map((property, index) => (
-                    <TableRow key={property?.id || `empty-${index}`}>
+                    <TableRow key={property?.id || `empty-${index}`} className="md:table-row flex flex-col p-4 md:p-0">
                       {property ? (
                         <>
-                          <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
-                          <TableCell>{formatDate(property.saleDate)}</TableCell>
-                          <TableCell>{property.county || '-'}</TableCell>
-                          <TableCell>
+                          {/* Mobile Layout */}
+                          <div className="md:hidden space-y-2 w-full">
+                            {/* Price and Date */}
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{formatPrice(property.price, property.description)}</span>
+                              <span className="text-muted-foreground">{formatDate(property.saleDate)}</span>
+                            </div>
+                            {/* Address */}
+                            <div className="truncate">
+                              {formatAddress(property.address)}
+                            </div>
+                            {/* County, Eircode, and Condition */}
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <span>{property.county || '-'}</span>
+                              <span>•</span>
+                              <span>{property.eircode || '-'}</span>
+                              <span>•</span>
+                              <Badge 
+                                variant={formatCondition(property.description) === 'New' ? 'default' : 'secondary'}
+                                className={cn(
+                                  "font-medium text-xs",
+                                  formatCondition(property.description) === 'New'
+                                    ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25'
+                                    : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-800/80'
+                                )}
+                              >
+                                {formatCondition(property.description)}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* Desktop Layout */}
+                          <TableCell className="font-medium hidden md:table-cell">
+                            {formatAddress(property.address)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {formatDate(property.saleDate)}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {property.county || '-'}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <Badge 
                               variant={formatCondition(property.description) === 'New' ? 'default' : 'secondary'}
                               className={cn(
-                                "font-medium",
+                                "font-medium w-fit",
                                 formatCondition(property.description) === 'New'
                                   ? 'bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:hover:bg-emerald-500/25'
                                   : 'bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-800/80'
@@ -236,21 +274,21 @@ export default function Home() {
                               {formatCondition(property.description)}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             {property.eircode || '-'}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell className="text-right hidden md:table-cell">
                             {formatPrice(property.price, property.description)}
                           </TableCell>
                         </>
                       ) : (
                         <>
-                          <TableCell className="text-muted-foreground/30">-</TableCell>
-                          <TableCell className="text-muted-foreground/30">-</TableCell>
-                          <TableCell className="text-muted-foreground/30">-</TableCell>
-                          <TableCell className="text-muted-foreground/30">-</TableCell>
-                          <TableCell className="text-muted-foreground/30">-</TableCell>
-                          <TableCell className="text-right text-muted-foreground/30">-</TableCell>
+                          <TableCell className="text-muted-foreground/30 hidden md:table-cell">-</TableCell>
+                          <TableCell className="text-muted-foreground/30 hidden md:table-cell">-</TableCell>
+                          <TableCell className="text-muted-foreground/30 hidden md:table-cell">-</TableCell>
+                          <TableCell className="text-muted-foreground/30 hidden md:table-cell">-</TableCell>
+                          <TableCell className="text-muted-foreground/30 hidden md:table-cell">-</TableCell>
+                          <TableCell className="text-right text-muted-foreground/30 hidden md:table-cell">-</TableCell>
                         </>
                       )}
                     </TableRow>

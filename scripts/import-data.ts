@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { getDataSource } from "../lib/database";
 import { PropertySale } from "../lib/entities/PropertySale";
 import * as fs from "fs";
