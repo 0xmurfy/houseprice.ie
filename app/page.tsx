@@ -179,12 +179,12 @@ export default function Home() {
         {loading ? (
           <TableSkeleton />
         ) : properties.length === 0 ? (
-          <div className="min-h-[calc(50*53px+41px)] rounded-md border flex items-center justify-center">
+          <div className="h-[2650px] rounded-md border flex items-center justify-center">
             <p className="text-lg text-gray-600">No properties found</p>
           </div>
         ) : (
           <>
-            <div className="rounded-md border min-h-[calc(50*53px+41px)]">
+            <div className="rounded-md border h-[2650px]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -196,7 +196,7 @@ export default function Home() {
                     <TableHead className="text-right">Price</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody className="relative">
                   {padProperties(properties).map((property, index) => (
                     <TableRow key={property?.id || `empty-${index}`}>
                       {property ? (
