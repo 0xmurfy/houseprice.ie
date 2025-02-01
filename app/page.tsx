@@ -157,10 +157,30 @@ export default function Home() {
     return [...props, ...Array(50 - props.length).fill(null)];
   };
 
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Separate useEffect for scrolling that runs after data loads
+  useEffect(() => {
+    if (!loading) {
+      const tableSection = document.querySelector('.table-section');
+      if (tableSection) {
+        const offset = tableSection.getBoundingClientRect().top + window.scrollY - 48; // 20px buffer
+        window.scrollTo({
+          top: offset,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [loading]); // Only run when loading state changes
+
   return (
     <main className="min-h-screen bg-background">
-      <Hero />
-      <div className="container mx-auto py-10 space-y-4">
+      <div className="hero-section">
+        <Hero />
+      </div>
+      <div className="container mx-auto py-10 space-y-4 table-section">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-semibold">Latest Sales</h2>
           <div className="w-1/3">
@@ -177,12 +197,12 @@ export default function Home() {
         {loading ? (
           <TableSkeleton />
         ) : properties.length === 0 ? (
-          <div className="h-[2650px] rounded-md border flex items-center justify-center">
+          <div className="rounded-md border flex items-center justify-center p-8">
             <p className="text-lg text-muted-foreground">No properties found</p>
           </div>
         ) : (
           <>
-            <div className="rounded-md border h-[2650px]">
+            <div className="rounded-md border table-container">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -194,7 +214,7 @@ export default function Home() {
                     <TableHead className="text-right">Price</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="relative">
+                <TableBody>
                   {padProperties(properties).map((property, index) => (
                     <TableRow key={property?.id || `empty-${index}`}>
                       {property ? (
@@ -240,28 +260,46 @@ export default function Home() {
 
             <Pagination>
               <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious 
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
-                {Array.from({ length: Math.min(5, paginationInfo.pages) }, (_, i) => (
-                  <PaginationItem key={i}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(i + 1)}
-                      isActive={currentPage === i + 1}
-                    >
-                      {i + 1}
-                    </PaginationLink>
+                {currentPage > 1 && (
+                  <PaginationItem>
+                    <PaginationPrevious 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(currentPage - 1);
+                      }} 
+                    />
                   </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext 
-                    onClick={() => setCurrentPage(prev => Math.min(paginationInfo.pages, prev + 1))}
-                    className={currentPage === paginationInfo.pages ? 'pointer-events-none opacity-50' : ''}
-                  />
-                </PaginationItem>
+                )}
+                {Array.from({ length: Math.min(5, paginationInfo.pages) }, (_, i) => {
+                  const pageNumber = currentPage + i - Math.min(currentPage - 1, 2);
+                  if (pageNumber > paginationInfo.pages || pageNumber < 1) return null;
+                  return (
+                    <PaginationItem key={pageNumber}>
+                      <PaginationLink
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          handlePageChange(pageNumber);
+                        }}
+                        isActive={currentPage === pageNumber}
+                      >
+                        {pageNumber}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                {currentPage < paginationInfo.pages && (
+                  <PaginationItem>
+                    <PaginationNext 
+                      href="#" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handlePageChange(currentPage + 1);
+                      }} 
+                    />
+                  </PaginationItem>
+                )}
               </PaginationContent>
             </Pagination>
           </>

@@ -1,34 +1,42 @@
+"use client";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Skeleton } from "@/components/ui/skeleton"
 
 export function TableSkeleton() {
-  // Create an array of 10 rows with decreasing opacity
-  const skeletonRows = Array.from({ length: 10 }, (_, i) => ({
-    opacity: 1 - (i * 0.1) // Opacity goes from 1.0 to 0.1
-  }));
-
   return (
-    <div className="rounded-md border h-[2650px]"> {/* 53px * 50 rows = 2650px */}
+    <div className="rounded-md border opacity-50">
       <Table>
         <TableHeader>
-          <TableRow>
-            <TableHead><Skeleton className="h-4 w-[200px]" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-[100px]" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-[100px]" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-[80px]" /></TableHead>
-            <TableHead><Skeleton className="h-4 w-[80px]" /></TableHead>
-            <TableHead className="text-right"><Skeleton className="h-4 w-[100px] ml-auto" /></TableHead>
+          <TableRow className="opacity-50">
+            <TableHead>Address</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>County</TableHead>
+            <TableHead>Condition</TableHead>
+            <TableHead>Eircode</TableHead>
+            <TableHead className="text-right">Price</TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {skeletonRows.map((row, index) => (
-            <TableRow key={index} style={{ opacity: row.opacity }}>
-              <TableCell><Skeleton className="h-4 w-[200px]" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-              <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
-              <TableCell className="text-right"><Skeleton className="h-4 w-[100px] ml-auto" /></TableCell>
+        <TableBody className="divide-y divide-border/50">
+          {Array.from({ length: 50 }).map((_, i) => (
+            <TableRow key={i} className="animate-pulse opacity-50">
+              <TableCell className="font-medium">
+                <div className="h-4 w-[250px] rounded bg-muted"></div>
+              </TableCell>
+              <TableCell>
+                <div className="h-4 w-[100px] rounded bg-muted"></div>
+              </TableCell>
+              <TableCell>
+                <div className="h-4 w-[80px] rounded bg-muted"></div>
+              </TableCell>
+              <TableCell>
+                <div className="h-4 w-[60px] rounded bg-muted"></div>
+              </TableCell>
+              <TableCell>
+                <div className="h-4 w-[80px] rounded bg-muted"></div>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="h-4 w-[100px] rounded bg-muted ml-auto"></div>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
