@@ -12,26 +12,23 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
+    const searchTerm = searchParams.get('search')?.toLowerCase();
     const start = (page - 1) * limit;
     const end = start + limit - 1;
 
-    // Get total count of properties
-    const { count, error: countError } = await supabase
+    let query = supabase
       .from('property_sale')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'exact' });
 
-    if (countError) {
-      console.error('Error getting count:', countError);
-      return NextResponse.json({ 
-        error: 'Database Query Error',
-        details: countError.message
-      }, { status: 500 });
+    // Add search functionality if search term is provided
+    if (searchTerm) {
+      query = query.or(
+        `address.ilike.%${searchTerm}%,eircode.ilike.%${searchTerm}%,county.ilike.%${searchTerm}%`
+      );
     }
 
-    // Get properties with pagination
-    const { data: properties, error: queryError } = await supabase
-      .from('property_sale')
-      .select('*')
+    // Get properties with pagination and search
+    const { data: properties, error: queryError, count } = await query
       .order('id', { ascending: false })
       .range(start, end);
 
