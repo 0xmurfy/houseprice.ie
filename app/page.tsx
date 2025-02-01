@@ -39,6 +39,7 @@ export default function Home() {
     currentPage: 1,
     perPage: 50
   });
+  const [shouldScroll, setShouldScroll] = useState(false);
 
   const debouncedSearch = useDebounce(searchTerm, 300);
 
@@ -90,6 +91,24 @@ export default function Home() {
       setLoading(false);
     }
   }, [currentPage, debouncedSearch]);
+
+  const handlePageChange = async (page: number) => {
+    // First scroll to just above the table
+    const tableSection = document.querySelector('.table-section');
+    if (tableSection) {
+      const offset = tableSection.getBoundingClientRect().top + window.scrollY - 48;
+      window.scrollTo({
+        top: offset,
+        behavior: 'smooth'
+      });
+    }
+
+    // Wait a brief moment for the scroll to complete
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // Then update the page which will trigger the data fetch
+    setCurrentPage(page);
+  };
 
   useEffect(() => {
     fetchProperties();
@@ -156,24 +175,6 @@ export default function Home() {
     if (props.length >= 50) return props;
     return [...props, ...Array(50 - props.length).fill(null)];
   };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  // Separate useEffect for scrolling that runs after data loads
-  useEffect(() => {
-    if (!loading) {
-      const tableSection = document.querySelector('.table-section');
-      if (tableSection) {
-        const offset = tableSection.getBoundingClientRect().top + window.scrollY - 48; // 20px buffer
-        window.scrollTo({
-          top: offset,
-          behavior: 'smooth'
-        });
-      }
-    }
-  }, [loading]); // Only run when loading state changes
 
   return (
     <main className="min-h-screen bg-background">
