@@ -1,3 +1,4 @@
+import * as React from "react";
 import { FlickeringGrid } from "@/components/ui/flickering-grid"
 
 export function Hero() {
